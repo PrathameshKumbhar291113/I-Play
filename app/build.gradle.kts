@@ -79,27 +79,41 @@ dependencies {
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
 
-    //other dependencies
+    //media 3 dependencies
     implementation(libs.androidx.media3.exoplayer)
     implementation(libs.androidx.media3.exoplayer.dash)
     implementation(libs.androidx.media3.ui)
+
+    //dagger-hilt dependencies
     implementation(libs.hilt.android)
     ksp(libs.hilt.android.compiler)
     implementation(libs.hilt.navigation)
     implementation(libs.androidx.hilt.common)
     implementation( libs.androidx.hilt.work)
+
+    //room dependencies
     implementation(libs.room.ktx)
     ksp(libs.room.compiler)
     implementation(libs.room.runtime)
     implementation(libs.room.testing)
+
+    //livedata and view-model dependencies
     implementation(libs.viewmodel.compose)
-    implementation(libs.kotlinx.serialization.json)
-    implementation(libs.navigation.compose)
     implementation(libs.runtime.livedata)
     implementation(libs.lifecycle.livedata.ktx)
     implementation(libs.lifecycle.runtime.compose)
+
+    //navigation compose dependency
+    implementation(libs.kotlinx.serialization.json)
+    implementation(libs.navigation.compose)
+
+    //constraint layout compose
     implementation(libs.constraintlayout.compose)
+
+    //coil compose dependency
     implementation(libs.coil.compose )
+
+    //work manager dependency
     implementation(libs.androidx.work.runtime.ktx)
 
 

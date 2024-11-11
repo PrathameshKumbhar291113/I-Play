@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -24,6 +25,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableLongStateOf
@@ -32,7 +34,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.media3.common.MediaItem
@@ -58,13 +62,15 @@ fun AudioFileItem(
     context: Context,
     isPlaying: Boolean,
     onPlayPauseToggle: (Boolean) -> Unit,
-    updateProgress: (Float, Long, Long) -> Unit,
+    updateProgress: (Float, Long, Long, String, Int) -> Unit,
     audioListViewModel: AudioListViewModel,
     modifier: Modifier = Modifier
 ) {
     var progress by remember { mutableFloatStateOf(0f) }
     var currentPosition by remember { mutableLongStateOf(0L) }
     var duration by remember { mutableLongStateOf(0L) }
+    val downloadStatusMap by audioListViewModel.downloadStatusMap.collectAsState()
+    val downloadStatus = downloadStatusMap[audioFile.id] ?: ""
 
     val player = remember {
         SimpleExoPlayer.Builder(context).build().apply {
@@ -88,8 +94,7 @@ fun AudioFileItem(
                     currentPosition = player.currentPosition
                     duration = player.duration
                     progress = currentPosition.toFloat() / duration.toFloat()
-                    updateProgress(progress, currentPosition, duration)
-
+                    updateProgress(progress, currentPosition, duration, audioFile.imageFileName, audioFile.id)
                 } else {
                     progress = 0f
                 }
@@ -120,7 +125,12 @@ fun AudioFileItem(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Image(
-                painter = painterResource(id = audioFile.imageFileName.toResId(context)),
+                painter = painterResource(
+                    id = audioFile.imageFileName.toResId(
+                        context,
+                        R.drawable.iplay_logo
+                    )
+                ),
                 contentDescription = "Song Poster",
                 modifier = Modifier
                     .size(80.dp)
@@ -134,7 +144,9 @@ fun AudioFileItem(
                     text = audioFile.songTitle,
                     style = MaterialTheme.typography.titleLarge,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis,
+                    fontStyle = FontStyle.Normal,
+                    color = colorResource(id = R.color.purple)
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -160,17 +172,30 @@ fun AudioFileItem(
                     }
 
                     IconButton(onClick = {
-                        audioListViewModel.downloadAudio(audioFile.audioFileId.toString(), audioFile.songTitle, audioFile.id)
+                        if (!downloadStatus.startsWith("Downloading")) {
+                            audioListViewModel.downloadAudio(
+                                audioFile.audioFileId.toString(),
+                                audioFile.songTitle,
+                                audioFile.id
+                            )
+                        }
                     }) {
-                        Image(
-                            painter = painterResource(id = R.drawable.iv_download),
-                            contentDescription = "Download"
-                        )
+                        if (downloadStatus.startsWith("Downloading")) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp),
+                                color = colorResource(id = R.color.red),
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Image(
+                                painter = painterResource(id = R.drawable.iv_download),
+                                contentDescription = "Download"
+                            )
+                        }
                     }
                 }
 
                 if (isPlaying) {
-
                     Spacer(modifier = Modifier.height(8.dp))
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -179,20 +204,31 @@ fun AudioFileItem(
                     ) {
                         Text(
                             text = formatTime(currentPosition),
-                            style = MaterialTheme.typography.bodySmall
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colorResource(id = R.color.purple)
                         )
                         LinearProgressIndicator(
-                            progress = { progress },
+                            progress = progress,
                             modifier = Modifier
                                 .weight(1f)
                                 .padding(horizontal = 8.dp),
-                            color = MaterialTheme.colorScheme.primary,
+                            color = colorResource(id = R.color.red),
                         )
                         Text(
                             text = formatTime(duration),
-                            style = MaterialTheme.typography.bodySmall
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colorResource(id = R.color.purple)
                         )
                     }
+                }
+
+                if (downloadStatus.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = downloadStatus,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colorResource(id = R.color.red)
+                    )
                 }
             }
         }

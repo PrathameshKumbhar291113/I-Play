@@ -8,7 +8,6 @@ import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.os.Build
-import android.os.Environment
 import android.provider.MediaStore
 import androidx.core.app.NotificationCompat
 import androidx.hilt.work.HiltWorker
@@ -23,6 +22,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
+
 @HiltWorker
 class DownloadAudioWorker @AssistedInject constructor(
     @ApplicationContext context: Context,
@@ -61,14 +61,19 @@ class DownloadAudioWorker @AssistedInject constructor(
             val notificationUpdateInterval = 500L
             var lastUpdateTime = System.currentTimeMillis()
 
+
+            showDownloadProgressNotification(0, applicationContext, songName)
+
             while (withContext(Dispatchers.IO) {
                     inputStream.read(buffer)
                 }.also { length = it } != -1) {
+
+
                 withContext(Dispatchers.IO) {
                     outputStream.write(buffer, 0, length)
                 }
-                downloadedSize += length
 
+                downloadedSize += length
                 val progress = (downloadedSize * 100 / totalSize)
                 val currentTime = System.currentTimeMillis()
 
@@ -78,13 +83,18 @@ class DownloadAudioWorker @AssistedInject constructor(
                     lastUpdateTime = currentTime
                 }
 
+                if (progress == 100) {
+                    break
+                }
                 delay(100)
             }
+
             withContext(Dispatchers.IO) {
                 inputStream.close()
                 outputStream.close()
             }
             showDownloadProgressNotification(100, applicationContext, songName)
+
             return Result.success()
 
         } catch (e: Exception) {
@@ -99,22 +109,26 @@ class DownloadAudioWorker @AssistedInject constructor(
             val contentValues = ContentValues().apply {
                 put(MediaStore.MediaColumns.DISPLAY_NAME, "$songName.mp3")
                 put(MediaStore.MediaColumns.MIME_TYPE, "audio/mpeg")
-                put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+                put(
+                    MediaStore.MediaColumns.RELATIVE_PATH,
+                    "Android/media/com.prathameshkumbhar.iplay"
+                )
             }
 
-            val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
+            val uri = resolver.insert(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, contentValues)
             uri?.let {
-                resolver.openOutputStream(it) as FileOutputStream
+                return resolver.openOutputStream(it) as FileOutputStream
             }
         } else {
-            val outputFile = File(
-                Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
-                "$songName.mp3"
-            )
+            val mediaDir = applicationContext.externalMediaDirs.firstOrNull()?.let {
+                File(it, "iplaysongs").apply { mkdirs() }
+            }
+
+            val outputFile = File(mediaDir ?: applicationContext.filesDir, "$songName.mp3")
             if (!outputFile.exists()) {
                 outputFile.createNewFile()
             }
-            FileOutputStream(outputFile)
+            return FileOutputStream(outputFile)
         }
     }
 
@@ -131,7 +145,7 @@ class DownloadAudioWorker @AssistedInject constructor(
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 channelId, channelName,
-                NotificationManager.IMPORTANCE_HIGH
+                NotificationManager.IMPORTANCE_LOW
             )
             notificationManager.createNotificationChannel(channel)
         }
@@ -145,7 +159,7 @@ class DownloadAudioWorker @AssistedInject constructor(
 
         val builder = NotificationCompat.Builder(context, channelId)
             .setContentTitle("Downloading $songName")
-            .setContentText(if (progress < 100) "Progress: $progress%" else "Download Complete")
+            .setContentText(if (progress < 100) "Downloading Progress: $progress%" else "Download Complete")
             .setSmallIcon(R.drawable.iv_download)
             .setProgress(100, progress, false)
             .setContentIntent(pendingIntent)
