@@ -5,5 +5,6 @@ data class AudioFile(
     val songTitle: String,
     val audioFileId: String? = null,
     val imageFileName: String,
-    val isDownloaded: Boolean
+    val isDownloaded: Boolean,
+    val isAutoSyncComplete: Boolean
 )

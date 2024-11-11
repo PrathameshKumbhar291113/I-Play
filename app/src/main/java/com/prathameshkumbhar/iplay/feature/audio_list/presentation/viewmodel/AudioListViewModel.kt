@@ -1,5 +1,6 @@
 package com.prathameshkumbhar.iplay.feature.audio_list.presentation.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.work.Data
@@ -38,11 +39,9 @@ class AudioListViewModel @Inject constructor(
     private val _audioFiles = MutableStateFlow<List<AudioFile>>(emptyList())
     val audioFiles: StateFlow<List<AudioFile>> = _audioFiles
 
-    private val _downloadStatus = MutableStateFlow<String>("")
-    val downloadStatus: StateFlow<String> = _downloadStatus
+    private val isDownloadInProgress = MutableStateFlow(false)
 
-    private val _isDownloadInProgress = MutableStateFlow(false)
-    val isDownloadInProgress: StateFlow<Boolean> = _isDownloadInProgress
+    var isNetworkAvailable = MutableStateFlow<Boolean>(false)
 
     private val _downloadedAudioFiles = MutableStateFlow<List<AudioEntity>>(emptyList())
     val downloadedAudioFiles: StateFlow<List<AudioEntity>> = _downloadedAudioFiles
@@ -59,6 +58,7 @@ class AudioListViewModel @Inject constructor(
     init {
         networkMonitor.isNetworkAvailable.observeForever { isAvailable ->
             loadAudioFilesBasedOnNetwork(isAvailable)
+            isNetworkAvailable.value = isAvailable
         }
     }
 
@@ -90,17 +90,18 @@ class AudioListViewModel @Inject constructor(
 
     private fun getDownloadedAudioFiles() {
         audioDownloadedListUseCase().onEach { downloadedFiles ->
+            Log.e("I_PLAY_DB", "getDownloadedAudioFiles: ${downloadedFiles.toList().toString()}", )
             _downloadedAudioFiles.value = downloadedFiles
         }.launchIn(viewModelScope)
     }
 
     fun downloadAudio(audioFileId: String, songName: String, audioId: Int) {
-        if (_isDownloadInProgress.value) {
+        if (isDownloadInProgress.value) {
             updateDownloadStatus(audioId, "Another download is in progress")
             return
         }
 
-        _isDownloadInProgress.value = true
+        isDownloadInProgress.value = true
         val workRequestTag = "download_$audioFileId"
         val existingWork = workManager.getWorkInfosByTag(workRequestTag).get().firstOrNull()
 
@@ -130,13 +131,13 @@ class AudioListViewModel @Inject constructor(
 
                 WorkInfo.State.SUCCEEDED -> {
                     updateDownloadStatus(audioId, "Download complete")
-                    _isDownloadInProgress.value = false
+                    isDownloadInProgress.value = false
                     markAsDownloaded(audioId)
                 }
 
                 WorkInfo.State.FAILED -> {
                     updateDownloadStatus(audioId, "Download failed")
-                    _isDownloadInProgress.value = false
+                    isDownloadInProgress.value = false
                 }
 
                 else -> {}

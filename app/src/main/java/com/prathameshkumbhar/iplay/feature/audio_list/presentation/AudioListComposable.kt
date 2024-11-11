@@ -1,5 +1,6 @@
 package com.prathameshkumbhar.iplay.feature.audio_list.presentation
 
+import android.widget.Toast
 import androidx.annotation.OptIn
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -37,6 +38,7 @@ import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.media3.common.util.UnstableApi
 import com.prathameshkumbhar.iplay.R
+import com.prathameshkumbhar.iplay.database.dto.toAudioFile
 import com.prathameshkumbhar.iplay.database.model.AudioFile
 import com.prathameshkumbhar.iplay.feature.audio_list.presentation.viewmodel.AudioListViewModel
 import com.prathameshkumbhar.iplay.utils.formatTime
@@ -50,9 +52,9 @@ object AudioListComposable
 @OptIn(UnstableApi::class)
 @Composable
 fun AudioListComposable() {
-
     val audioListViewModel: AudioListViewModel = hiltViewModel()
     val audioListState = audioListViewModel.audioFiles.collectAsState()
+    val downloadedAudioFilesState = audioListViewModel.downloadedAudioFiles.collectAsState()
     val context = LocalContext.current
     val playingStateMap = remember { mutableStateMapOf<Int, Boolean>() }
     var currentlyPlaying by remember { mutableStateOf<AudioFile?>(null) }
@@ -60,6 +62,8 @@ fun AudioListComposable() {
     var currentPosition by remember { mutableLongStateOf(0L) }
     var duration by remember { mutableLongStateOf(0L) }
     var songPosterImage by remember { mutableStateOf("") }
+    val downloadedAudioFiles = downloadedAudioFilesState.value.map { it.toAudioFile() }
+    val isNetworkAvailable by audioListViewModel.isNetworkAvailable.collectAsState()
 
     ConstraintLayout(
         modifier = Modifier.fillMaxSize()
@@ -89,41 +93,61 @@ fun AudioListComposable() {
                 }
                 .padding(horizontal = 16.dp)
         ) {
-            itemsIndexed(audioListState.value) { index, audioFile ->
-                val isPlaying = playingStateMap[audioFile.audioFileId.toRawResId(context, R.raw.dua_lipa_levitating)] ?: false
 
-                audioFile.audioFileId?.toRawResId(context, R.raw.dua_lipa_levitating)?.let { audioFileId ->
-                    AudioFileItem(
-                        audioFile = audioFile,
-                        context = context,
-                        isPlaying = isPlaying,
-                        onPlayPauseToggle = { playing ->
-                            playingStateMap[audioFileId] = playing
-                            if (playing) {
-                                currentlyPlaying = audioFile
-                                GlobalPlayer.player?.play()
-                            } else if (currentlyPlaying?.audioFileId.toRawResId(context, R.raw.dua_lipa_levitating) == audioFileId) {
-                                currentlyPlaying = null
-                                GlobalPlayer.player?.pause()
-                            }
+            val filteredAudioFiles = if (isNetworkAvailable) {
+                audioListState.value
+            } else {
+                downloadedAudioFiles
+            }
 
-                            audioListState.value.forEachIndexed { i, file ->
-                                file.audioFileId?.toRawResId(context,R.raw.dua_lipa_levitating)?.let { fileId ->
-                                    if (i != index) playingStateMap[fileId] = false
+
+            itemsIndexed(filteredAudioFiles) { index, audioFile ->
+                val isPlaying = playingStateMap[audioFile.audioFileId.toRawResId(
+                    context,
+                    R.raw.dua_lipa_levitating
+                )] ?: false
+                audioFile.audioFileId?.toRawResId(context, R.raw.dua_lipa_levitating)
+                    ?.let { audioFileId ->
+                        AudioFileItem(
+                            audioFile = audioFile,
+                            context = context,
+                            isPlaying = isPlaying,
+                            onPlayPauseToggle = { playing ->
+                                playingStateMap[audioFileId] = playing
+                                if (playing) {
+                                    currentlyPlaying = audioFile
+                                    GlobalPlayer.player?.play()
+                                } else if (currentlyPlaying?.audioFileId.toRawResId(
+                                        context,
+                                        R.raw.dua_lipa_levitating
+                                    ) == audioFileId
+                                ) {
+                                    currentlyPlaying = null
+                                    GlobalPlayer.player?.pause()
                                 }
-                            }
-                        },
-                        updateProgress = { updatedProgress, currentPos, songDuration, imageFileName, audioId ->
-                            progress = updatedProgress
-                            currentPosition = currentPos
-                            duration = songDuration
-                            songPosterImage = imageFileName
-                            audioListViewModel.updatePlaybackPosition(audioId, currentPosition, progress)
-                        },
-                        audioListViewModel,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
+
+                                filteredAudioFiles.forEachIndexed { i, file ->
+                                    file.audioFileId?.toRawResId(context, R.raw.dua_lipa_levitating)
+                                        ?.let { fileId ->
+                                            if (i != index) playingStateMap[fileId] = false
+                                        }
+                                }
+                            },
+                            updateProgress = { updatedProgress, currentPos, songDuration, imageFileName, audioId ->
+                                progress = updatedProgress
+                                currentPosition = currentPos
+                                duration = songDuration
+                                songPosterImage = imageFileName
+                                audioListViewModel.updatePlaybackPosition(
+                                    audioId,
+                                    currentPosition,
+                                    progress
+                                )
+                            },
+                            audioListViewModel,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
             }
         }
 
@@ -197,9 +221,7 @@ fun AudioListComposable() {
                     color = colorResource(id = R.color.red)
                 )
                 LinearProgressIndicator(
-                    progress = {
-                        progress.coerceIn(0f, 1f)
-                    },
+                    progress = progress.coerceIn(0f, 1f),
                     modifier = Modifier
                         .weight(1f)
                         .padding(horizontal = 8.dp),
@@ -211,7 +233,12 @@ fun AudioListComposable() {
                     color = colorResource(id = R.color.red)
                 )
             }
+        }
 
+        if (isNetworkAvailable){
+            Toast.makeText(context, "Auto Sync Started, Connected to Internet.", Toast.LENGTH_SHORT).show()
+        }else{
+            Toast.makeText(context, "Auto Sync Stopped, No Internet.", Toast.LENGTH_SHORT).show()
         }
     }
 }
