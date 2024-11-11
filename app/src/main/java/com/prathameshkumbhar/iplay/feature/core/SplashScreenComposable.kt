@@ -5,17 +5,14 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.constraintlayout.compose.Dimension
 import androidx.navigation.NavHostController
-import coil.compose.rememberImagePainter
 import com.prathameshkumbhar.iplay.R
 import com.prathameshkumbhar.iplay.feature.audio_list.presentation.AudioListComposable
 import kotlinx.coroutines.delay
@@ -30,7 +27,9 @@ fun SplashScreenComposable(navHostController: NavHostController) {
 
     LaunchedEffect(Unit) {
         delay(2000)
-        navHostController.navigate(AudioListComposable)
+        navHostController.navigate(AudioListComposable) {
+            popUpTo(SplashScreenComposable) { inclusive = true }
+        }
     }
 
     ConstraintLayout(

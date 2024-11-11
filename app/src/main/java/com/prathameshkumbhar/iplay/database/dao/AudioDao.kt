@@ -1,5 +1,6 @@
 package com.prathameshkumbhar.iplay.database.dao
 
+import androidx.lifecycle.LiveData
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
@@ -11,15 +12,21 @@ import com.prathameshkumbhar.iplay.database.entity.AudioEntity
 interface AudioDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertDownload(audioDownloadEntity: AudioEntity)
+    suspend fun insertAudio(audioEntity: AudioEntity)
 
     @Update
-    suspend fun updateDownload(audioDownloadEntity: AudioEntity)
+    suspend fun updateAudio(audioEntity: AudioEntity)
 
     @Query("SELECT * FROM audio_table WHERE id = :id")
     suspend fun getDownloadById(id: Int): AudioEntity?
 
     @Query("SELECT * FROM audio_table")
     suspend fun getAllDownloads(): List<AudioEntity>
+
+    @Query("SELECT * FROM audio_table WHERE isDownloaded = 1")
+    fun getDownloadedAudio(): LiveData<List<AudioEntity>>
+
+    @Query("UPDATE audio_table SET progress = :progress, isDownloaded = :isDownloaded WHERE id = :id")
+    suspend fun updateProgress(id: Int, progress: Float, isDownloaded: Boolean)
 
 }

@@ -7,8 +7,9 @@ import com.prathameshkumbhar.iplay.utils.IPlayRoomDbConstants.AUDIO_TABLE
 @Entity(tableName = AUDIO_TABLE)
 data class AudioEntity(
     @PrimaryKey val id: Int,
-    val title: String,
-    val filePath: String,
-    val progress: Float,
+    val songTitle: String,
+    val audioFileId: Int? = null,
+    val imageFileName: String,
+    val progress: Float = 0f,
     val isDownloaded: Boolean = false
 )
