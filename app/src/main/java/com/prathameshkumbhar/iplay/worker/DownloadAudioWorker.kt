@@ -33,8 +33,9 @@ class DownloadAudioWorker @AssistedInject constructor(
     override suspend fun doWork(): Result {
         val audioFileId = inputData.getString("audioFileId") ?: return Result.failure()
         val songName = inputData.getString("songName") ?: return Result.failure()
+        lateinit var result: Result
 
-        try {
+        kotlin.runCatching {
             val rawAudioResourceId = applicationContext.resources.getIdentifier(
                 audioFileId,
                 "raw",
@@ -60,7 +61,6 @@ class DownloadAudioWorker @AssistedInject constructor(
             var lastProgress = 0
             val notificationUpdateInterval = 500L
             var lastUpdateTime = System.currentTimeMillis()
-
 
             showDownloadProgressNotification(0, applicationContext, songName)
 
@@ -95,12 +95,12 @@ class DownloadAudioWorker @AssistedInject constructor(
             }
             showDownloadProgressNotification(100, applicationContext, songName)
 
-            return Result.success()
-
-        } catch (e: Exception) {
-            e.printStackTrace()
-            return Result.failure()
+        }.onSuccess {
+            result = Result.success()
+        }.onFailure {
+            result = Result.failure()
         }
+        return result
     }
 
     private fun getOutputStream(songName: String): FileOutputStream? {

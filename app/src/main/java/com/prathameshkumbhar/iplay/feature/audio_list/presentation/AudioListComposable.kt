@@ -221,7 +221,7 @@ fun AudioListComposable() {
                     color = colorResource(id = R.color.red)
                 )
                 LinearProgressIndicator(
-                    progress = progress.coerceIn(0f, 1f),
+                    progress = { progress.coerceIn(0f, 1f) },
                     modifier = Modifier
                         .weight(1f)
                         .padding(horizontal = 8.dp),
